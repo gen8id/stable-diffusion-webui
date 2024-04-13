@@ -1,0 +1,40 @@
+https://www.python.org/downloads/windows/
+Python 3.10.11 - April 5, 2023
+
+
+https://pypi.org/project/task-queue/
+
+pip install numpy # make sure you do this first on a seperate line
+pip install task-queue
+
+from taskqueue import queueable
+
+@queueable
+def print_task(txt):
+  print(str(txt))
+
+from functools import partial
+bound_fn = partial(print_task, txt="hello world")
+
+
+** Local Usage
+
+from functools import partial
+from taskqueue import LocalTaskQueue
+from mylibrary import PrintTask # mylibrary is wherever you defined PrintTask
+
+tq = LocalTaskQueue(parallel=5) # use 5 processes
+
+
+tasks = ( PrintTask(i) for i in range(2000) ) # OLD SCHOOL
+tasks = ( partial(print_task, i) for i in range(2000) ) # NEW SCHOOL
+
+tq.insert_all(tasks) # performs on-line execution (naming is historical)
+
+# alterternative serial model
+tq.insert(tasks)
+tq.execute()
+
+# delete tasks
+tq.delete(tasks)
+tq.purge() # delete all tasks

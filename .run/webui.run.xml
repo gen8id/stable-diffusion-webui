@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="webui" type="BatchConfigurationType" factoryName="Batch">
+    <module name="stable-diffusion-webui" />
+    <option name="INTERPRETER_OPTIONS" value="" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <option name="PARENT_ENVS" value="true" />
+    <option name="SCRIPT_NAME" value="webui.bat" />
+    <option name="PARAMETERS" value="--skip-torch-cuda-test" />
+    <method v="2" />
+  </configuration>
+</component>
