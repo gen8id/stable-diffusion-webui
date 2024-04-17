@@ -27,11 +27,11 @@ resize-right
 safetensors
 scikit-image>=0.19
 tomesd
-torch
+torch=2.1.2
 torchdiffeq
 torchsde
 transformers==4.39.3
 
 # added by sungjoon.kim at 24'04.15
 urllib3
-deepl
+deepl==1.17.0

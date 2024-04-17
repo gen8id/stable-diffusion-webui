@@ -1,8 +1,9 @@
 @echo off
 
-:: set PYTHON=
-:: set GIT=
-:: set VENV_DIR=
-set COMMANDLINE_ARGS=--api --skip-torch-cuda-test --xformers
+REM set PYTHON=
+REM set GIT=
+REM set VENV_DIR=
+REM --skip-torch-cuda-test
+set COMMANDLINE_ARGS=--api --xformers
 
 call webui.bat

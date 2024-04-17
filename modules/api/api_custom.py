@@ -12,7 +12,7 @@ from contextlib import closing
 from modules.progress import create_task_id, add_task_to_queue, start_task, finish_task, current_task
 
 # added by sungjoon.kim at 24'04.15
-import api as api
+import modules.api.api as api
 from pydantic import BaseModel
 import deepl
 
@@ -41,6 +41,7 @@ StableDiffusionTxt2ImgProcessingAPI = PydanticModelGenerator(
     ]
 ).generate_model()
 
+
 class Txt2ImgParam(BaseModel):
     gndr: str | None = ''
     cstm: str | None = ''
@@ -48,7 +49,7 @@ class Txt2ImgParam(BaseModel):
     bgnd: str | None = ''
 
 
-def text2imgapi(self, txt2imgreq: Txt2ImgParam):
+def text2imgapi2(self, txt2imgreq: Txt2ImgParam):
 
     hangul_text_arr =[txt2imgreq.gndr, txt2imgreq.cstm, txt2imgreq.look, txt2imgreq.bgnd]
 
