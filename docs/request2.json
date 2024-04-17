@@ -1,0 +1,12 @@
+{
+    "sampler_index": "Euler",
+    "prompt": "maltese puppy",
+    "negative_prompt": "",
+    "steps": 20,
+    "width": 768,
+    "height": 768,
+    "seed": "1064089886",
+    "cfg_scale": 10,
+    "batch_count": 1,
+    "batch_size": 4
+}

@@ -10,6 +10,7 @@ facexlib
 fastapi>=0.90.1
 gradio==3.41.2
 inflection
+orjson
 jsonmerge
 kornia
 lark
@@ -29,4 +30,8 @@ tomesd
 torch
 torchdiffeq
 torchsde
-transformers==4.30.2
+transformers==4.39.3
+
+# added by sungjoon.kim at 24'04.15
+urllib3
+deepl

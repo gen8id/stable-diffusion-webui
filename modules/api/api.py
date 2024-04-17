@@ -32,6 +32,8 @@ import piexif
 import piexif.helper
 from contextlib import closing
 from modules.progress import create_task_id, add_task_to_queue, start_task, finish_task, current_task
+# added by sungjoon.kim at 24'04.15
+import api_custom as api_custom
 
 def script_name_to_index(name, scripts):
     try:
@@ -208,6 +210,11 @@ class Api:
         self.app = app
         self.queue_lock = queue_lock
         api_middleware(self.app)
+
+        # added by sungjoon.kim at 24'04.
+        self.add_api_route("/api/v1/txt2img", api_custom.text2imgapi, methods=["POST"], response_model=models.TextToImageResponse)
+        self.add_api_route("/api/v1/img2img", api_custom.img2imgapi, methods=["POST"], response_model=models.ImageToImageResponse)
+
         self.add_api_route("/sdapi/v1/txt2img", self.text2imgapi, methods=["POST"], response_model=models.TextToImageResponse)
         self.add_api_route("/sdapi/v1/img2img", self.img2imgapi, methods=["POST"], response_model=models.ImageToImageResponse)
         self.add_api_route("/sdapi/v1/extra-single-image", self.extras_single_image_api, methods=["POST"], response_model=models.ExtrasSingleImageResponse)
