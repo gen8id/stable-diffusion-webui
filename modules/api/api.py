@@ -234,7 +234,7 @@ class Api:
         api_middleware(self.app)
 
         # added by sungjoon.kim at 24'04.
-        self.add_api_route("/api/v1/txt2img", self.text2imgapi2, methods=["POST"], response_model=None)
+        self.add_api_route("/api/v1/txt2img", self.text2imgapi2, methods=["POST"], response_model=models.TextToImageResponse2)
         # self.add_api_route("/api/v1/img2img", api_custom.img2imgapi, methods=["POST"], response_model=models.ImageToImageResponse)
 
         self.add_api_route("/sdapi/v1/txt2img", self.text2imgapi, methods=["POST"], response_model=models.TextToImageResponse)
