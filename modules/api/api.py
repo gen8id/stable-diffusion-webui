@@ -527,7 +527,7 @@ class Api:
         logging.info('trans_rslt ' + trans_rslt[0].text  + trans_rslt[1].text  + trans_rslt[2].text  + trans_rslt[3].text)
 
         gender_noun = 'he'
-        if trans_rslt[0].text is 'girl':
+        if trans_rslt[0].text == 'girl':
             gender_noun = 'she'
         pstv_pmpt = pstv_pmpt_prefix.replace('{{gender}}', trans_rslt[0].text.replace(';', ', BREAK,'))
         pstv_pmpt = pstv_pmpt + ', ' + gender_noun + ' is wearing ' + trans_rslt[1].text.replace(
