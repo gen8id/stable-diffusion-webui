@@ -16,11 +16,13 @@ import modules.api.api as api
 from pydantic import BaseModel
 import deepl
 
-API_URL_DEEPL = 'https://api-free.deepl.com/v2/translate'
-API_KEY_DEEPL = 'DeepL-Auth-Key 9b534bc9-7729-44ae-b4f4-2fc0ba33968a:fx'
-pgtn_pmpt_prefix = "masterpiece, best quality, (realistic, photo-realistic:1.4), (RAW photo:1.2), extremely detailed CG unity 8k wallpaper, an extremely delicate and beautiful, amazing, finely detail, official art, huge filesize, ultra-detailed, extremely detailed, beautiful detailed girl, extremely detailed eyes and face, beautiful detailed eyes, light on face, (((dramatic lighting, full body))), dramatic lighting, (masterpiece:1.2), (best_quality:1.4), (highres:1.1), (ultra-detailed:1.2), subsurface scattering, (sharp:0.7), amazing fine detail, Nikon D850 film stock photograph Kodak Portra 400 camera f1.6 lens, rich colors, lifelike texture, dramatic lighting, sidelighting, (Polaroid dark tone low key film:1.1),ultra-detailed, ultra high res, side looks, professional lighting, hyperrealism,(sidelighting, finely detailed beautiful eyes: 1.3), sexy, beautiful, big eyes, beautiful detailed eyes, finely detailed beautiful eyes, high quality makeup, cute, slim waist, aegyo sal, 1{{gender}}, (1 mid 20's a little muscular kpop idol {{gender}}:1.1), "
-pgtv_pmpt_suffix = ", <lora:kitagawa_marin_v1-1:1>, <lora:Asian orgasm v4:1.3>"
-ngtv_pmpt     = "(worst quality:2), (low quality:2), (normal quality:2), lowres, ((monochrome)), ((grayscale)),paintings, sketches,nipples, skin spots, acnes, skin blemishes, bad anatomy,facing away, looking away,tilted head,lowres,bad anatomy,bad hands, text, error, missing fingers,extra digit, fewer digits, blurry,bad feet,cropped,poorly drawn hands,poorly drawn face,mutation,deformed,worst quality,low quality,normal quality,jpeg artifacts,signature,watermark,extra fingers,fewer digits,extra limbs,extra arms,extra legs,malformed limbs,fused fingers,too many fingers,long neck,cross-eyed,mutated hands,polar lowres,bad body,bad proportions, gross, easynegative, negative_hand-neg, wearing vests, ng_deepnegative_v1_75t, daytime, bright, 2girls, 2 girls, two girls, petals, logo, nametag, watermark, tattoo, tattoos, daytime, bright, leather, cum, dripping, (sweat), wet, tattoo, veins, FastNegativeV2, fat, v, peace symbol, reflected light in eyes"
+
+API_URL_DEEPL    = 'https://api-free.deepl.com'
+API_KEY_DEEPL    = '9b534bc9-7729-44ae-b4f4-2fc0ba33968a:fx'
+pstv_pmpt_prefix = "(realistic, photo realistic, dramatic lighting, full body, best quality:1.4), (side lighting, finely detailed beautiful eyes: 1.3), (raw photo, masterpiece, ultra detailed:1.2), (highres, aegyo sal, Polaroid dark tone low key film:1.1), extremely detailed CG unity 8k wallpaper, extremely delicate and beautiful, amazing, finely detail, official art, huge filesize, extremely detailed, extremely detailed eyes and face, light on face, subsurface scattering, amazing fine detail, Nikon D850 film stock photograph Kodak Portra 400 camera f1.6 lens, rich colors, lifelike texture, ultra high res, side look, professional lighting, hyper realism, sexy, beautiful, big eyes, beautiful detailed eyes, high quality makeup, cute, slim waist, 1{{gender}}, (mid 20's a little muscular kpop idol {{gender}}:1.1), (sharp:0.7)"
+pstv_pmpt_suffix = ", <lora:kitagawa_marin_v1-1:1>, <lora:Asian orgasm v4:1.3>"
+ngtv_pmpt        = "(worst quality, low quality, normal quality:1.8), (monochrome, grayscale:1.2), (sweat:1.1), lowres, paintings, sketches, nipples, skin spots, acnes, skin blemishes, bad anatomy, tilted head, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, blurry, bad feet, cropped, poorly drawn hands, poorly drawn face, mutation, deformed, jpeg artifacts, signature, watermark, extra fingers, fewer digits, extra limbs, extra arms, extra legs, malformed limbs, fused fingers, too many fingers, long neck, cross-eyed, mutated hands, polar lowres, bad body, bad proportions, gross, easynegative, negative_hand-neg, wearing vests, ng_deepnegative_v1_75t, 2girls, 2 girls, two girls, petals, logo, nametag, watermark, tattoo, tattoos, leather, cum, dripping, wet, tattoo, veins, FastNegativeV2, fat, v, peace symbol, nsfw,  dirty face, 1leg, 1arm, 1 leg, 1 arm, one leg, one arm, blurred eyes, too big breast, naked, bare chested, underwear, lingerie, too short pants, naked abdomen, naked belly, naked stomach, 2head, 2 head, two head, reflected light in eyes"
+
 
 StableDiffusionTxt2ImgProcessingAPI = PydanticModelGenerator(
     "StableDiffusionProcessingTxt2Img",
@@ -43,26 +45,30 @@ StableDiffusionTxt2ImgProcessingAPI = PydanticModelGenerator(
 
 
 class Txt2ImgParam(BaseModel):
-    gndr: str | None = ''
+    gndr: str | None = '소녀'
     cstm: str | None = ''
     look: str | None = ''
     bgnd: str | None = ''
+    sampler_name: str | None = 'DPM++ 2M'
+    save_images: bool | None = False
+    scheduler: str | None = 'karras'
 
 
 def text2imgapi2(self, txt2imgreq: Txt2ImgParam):
 
-    hangul_text_arr =[txt2imgreq.gndr, txt2imgreq.cstm, txt2imgreq.look, txt2imgreq.bgnd]
+    hangul_text_arr = [txt2imgreq.gndr, txt2imgreq.cstm, txt2imgreq.look, txt2imgreq.bgnd]
 
+    # gender, costume, look, background
     translator = deepl.Translator(API_KEY_DEEPL, server_url=API_URL_DEEPL)
-    trans_rslt = translator.translate_text(hangul_text_arr, source_lang="KO", target_lang="EN")
-    print(trans_rslt.text)
-
-    return
-
-    en_arr = trans_rslt
-
-    pmpt = pgtn_pmpt_prefix + en_arr + pgtv_pmpt_suffix
-
+    trans_rslt = translator.translate_text(hangul_text_arr, source_lang="KO", target_lang="EN-US")
+    gender_noun = 'he'
+    if trans_rslt[0].text is 'girl':
+        gender_noun = 'she'
+    new_pstv_pmpt_prefix = pstv_pmpt_prefix.replace('{{gender}}', trans_rslt[0].text.replace(';', ', BREAK,'))
+    new_pstv_pmpt_prefix = new_pstv_pmpt_prefix + ', ' + gender_noun + ' is wearing ' + trans_rslt[1].text.replace(';', ', BREAK,')
+    new_pstv_pmpt_prefix = new_pstv_pmpt_prefix + ', ' + gender_noun + ' is ' + trans_rslt[2].text.replace(';', ', BREAK,')
+    new_pstv_pmpt_prefix = new_pstv_pmpt_prefix + ', ' + gender_noun + ' is ' + trans_rslt[3].text.replace(';', ', BREAK,')
+    new_pstv_pmpt_prefix += pstv_pmpt_suffix
 
     task_id = txt2imgreq.force_task_id or create_task_id("txt2img")
 
