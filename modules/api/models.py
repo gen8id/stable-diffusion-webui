@@ -101,14 +101,18 @@ StableDiffusionTxt2ImgProcessingAPI = PydanticModelGenerator(
     "StableDiffusionProcessingTxt2Img",
     StableDiffusionProcessingTxt2Img,
     [
-        {"key": "sampler_index", "type": str, "default": "Euler"},
+        {"key": "sampler_index", "type": str, "default": "DPM++ 2M"},
         {"key": "script_name", "type": str, "default": None},
         {"key": "script_args", "type": list, "default": []},
         {"key": "send_images", "type": bool, "default": True},
-        {"key": "save_images", "type": bool, "default": False},
+        {"key": "save_images", "type": bool, "default": True},
         {"key": "alwayson_scripts", "type": dict, "default": {}},
         {"key": "force_task_id", "type": str, "default": None},
         {"key": "infotext", "type": str, "default": None},
+        {"key": "gndr", "type": Optional[str], "default": None},
+        {"key": "cstm", "type": Optional[str], "default": None},
+        {"key": "look", "type": Optional[str], "default": None},
+        {"key": "bgnd", "type": Optional[str], "default": None},
     ]
 ).generate_model()
 
@@ -120,11 +124,11 @@ StableDiffusionImg2ImgProcessingAPI = PydanticModelGenerator(
         {"key": "init_images", "type": list, "default": None},
         {"key": "denoising_strength", "type": float, "default": 0.75},
         {"key": "mask", "type": str, "default": None},
-        {"key": "include_init_images", "type": bool, "default": False, "exclude" : True},
+        {"key": "include_init_images", "type": bool, "default": False, "exclude": True},
         {"key": "script_name", "type": str, "default": None},
         {"key": "script_args", "type": list, "default": []},
         {"key": "send_images", "type": bool, "default": True},
-        {"key": "save_images", "type": bool, "default": False},
+        {"key": "save_images", "type": bool, "default": True},
         {"key": "alwayson_scripts", "type": dict, "default": {}},
         {"key": "force_task_id", "type": str, "default": None},
         {"key": "infotext", "type": str, "default": None},
@@ -135,6 +139,11 @@ class TextToImageResponse(BaseModel):
     images: list[str] = Field(default=None, title="Image", description="The generated image in base64 format.")
     parameters: dict
     info: str
+
+class TextToImageResponse2(BaseModel):
+    images: list[str] = Field(default=None, title="Image", description="The generated image path.")
+    seed: str
+
 
 class ImageToImageResponse(BaseModel):
     images: list[str] = Field(default=None, title="Image", description="The generated image in base64 format.")

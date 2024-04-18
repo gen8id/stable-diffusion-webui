@@ -518,7 +518,7 @@ class StableDiffusionProcessing:
 
 
 class Processed:
-    def __init__(self, p: StableDiffusionProcessing, images_list, seed=-1, info="", subseed=None, all_prompts=None, all_negative_prompts=None, all_seeds=None, all_subseeds=None, index_of_first_image=0, infotexts=None, comments=""):
+    def __init__(self, p: StableDiffusionProcessing, images_list, seed=-1, info="", subseed=None, all_prompts=None, all_negative_prompts=None, all_seeds=None, all_subseeds=None, index_of_first_image=0, infotexts=None, img_urls=None, comments=""):
         self.images = images_list
         self.prompt = p.prompt
         self.negative_prompt = p.negative_prompt
@@ -572,6 +572,9 @@ class Processed:
         self.infotexts = infotexts or [info]
         self.version = program_version()
 
+        # sungjoon.kim 2024.04.18 added
+        self.img_urls = img_urls
+
     def js(self):
         obj = {
             "prompt": self.all_prompts[0],
@@ -606,6 +609,9 @@ class Processed:
             "clip_skip": self.clip_skip,
             "is_using_inpainting_conditioning": self.is_using_inpainting_conditioning,
             "version": self.version,
+
+            # sungjoon.kim 2024.04.18 added
+            "img_urls": self.img_urls
         }
 
         return json.dumps(obj, default=lambda o: None)
@@ -1017,7 +1023,8 @@ def process_images_inner(p: StableDiffusionProcessing) -> Processed:
             def infotext(index=0, use_main_prompt=False):
                 return create_infotext(p, p.prompts, p.seeds, p.subseeds, use_main_prompt=use_main_prompt, index=index, all_negative_prompts=p.negative_prompts)
 
-            save_samples = p.save_samples()
+            save_samples = True # p.save_samples()
+            img_urls = []
 
             for i, x_sample in enumerate(x_samples_ddim):
                 p.batch_index = i
@@ -1073,7 +1080,8 @@ def process_images_inner(p: StableDiffusionProcessing) -> Processed:
                     image = pp.image
 
                 if save_samples:
-                    images.save_image(image, p.outpath_samples, "", p.seeds[i], p.prompts[i], opts.samples_format, info=infotext(i), p=p)
+                    ret = images.save_image(image, p.outpath_samples, "", p.seeds[i], p.prompts[i], opts.samples_format, info=infotext(i), p=p)
+                    img_urls.append(ret[0].replace('outputs/', '').replace('\\', '/'))
 
                 text = infotext(i)
                 infotexts.append(text)
@@ -1118,8 +1126,8 @@ def process_images_inner(p: StableDiffusionProcessing) -> Processed:
                 output_images.insert(0, grid)
                 index_of_first_image = 1
             if opts.grid_save:
-                images.save_image(grid, p.outpath_grids, "grid", p.all_seeds[0], p.all_prompts[0], opts.grid_format, info=infotext(use_main_prompt=True), short_filename=not opts.grid_extended_filename, p=p, grid=True)
-
+                ret = images.save_image(grid, p.outpath_grids, "grid", p.all_seeds[0], p.all_prompts[0], opts.grid_format, info=infotext(use_main_prompt=True), short_filename=not opts.grid_extended_filename, p=p, grid=True)
+                img_urls.append(ret[0].replace('outputs/', '').replace('\\', '/'))
     if not p.disable_extra_networks and p.extra_network_data:
         extra_networks.deactivate(p, p.extra_network_data)
 
@@ -1133,6 +1141,7 @@ def process_images_inner(p: StableDiffusionProcessing) -> Processed:
         subseed=p.all_subseeds[0],
         index_of_first_image=index_of_first_image,
         infotexts=infotexts,
+        img_urls=img_urls
     )
 
     if p.scripts is not None:
@@ -1170,6 +1179,11 @@ class StableDiffusionProcessingTxt2Img(StableDiffusionProcessing):
     hr_prompt: str = ''
     hr_negative_prompt: str = ''
     force_task_id: str = None
+
+    gndr: str = None
+    cstm: str = None
+    look: str = None
+    bgnd: str = None
 
     cached_hr_uc = [None, None]
     cached_hr_c = [None, None]
@@ -1361,7 +1375,8 @@ class StableDiffusionProcessingTxt2Img(StableDiffusionProcessing):
                 image = sd_samplers.sample_to_image(image, index, approximation=0)
 
             info = create_infotext(self, self.all_prompts, self.all_seeds, self.all_subseeds, [], iteration=self.iteration, position_in_batch=index)
-            images.save_image(image, self.outpath_samples, "", seeds[index], prompts[index], opts.samples_format, info=info, p=self, suffix="-before-highres-fix")
+            ret = images.save_image(image, self.outpath_samples, "", seeds[index], prompts[index], opts.samples_format, info=info, p=self, suffix="-before-highres-fix")
+            logging.info('save_image ' + ret[0])
 
         img2img_sampler_name = self.hr_sampler_name or self.sampler_name
 

@@ -8,8 +8,9 @@ import ipaddress
 import requests
 import gradio as gr
 from threading import Lock
+from fastapi.logger import logger
 from io import BytesIO
-from fastapi import APIRouter, Depends, FastAPI, Request, Response
+from fastapi import APIRouter, Depends, FastAPI, Request, Response, Header
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse
@@ -33,8 +34,20 @@ import piexif.helper
 from contextlib import closing
 from modules.progress import create_task_id, add_task_to_queue, start_task, finish_task, current_task
 # added by sungjoon.kim at 24'04.15
-from modules.api.api_custom import text2imgapi2
+import logging
+from pydantic import BaseModel
+import deepl
 
+
+API_URL_DEEPL    = 'https://api-free.deepl.com'
+pstv_pmpt_prefix = "(realistic, photo realistic, dramatic lighting, full body, best quality:1.4), (side lighting, finely detailed beautiful eyes: 1.3), (raw photo, masterpiece, ultra detailed:1.2), (highres, aegyo sal, Polaroid dark tone low key film:1.1), extremely detailed CG unity 8k wallpaper, extremely delicate and beautiful, amazing, finely detail, official art, huge filesize, extremely detailed, extremely detailed eyes and face, light on face, subsurface scattering, amazing fine detail, Nikon D850 film stock photograph Kodak Portra 400 camera f1.6 lens, rich colors, lifelike texture, ultra high res, side look, professional lighting, hyper realism, sexy, beautiful, big eyes, beautiful detailed eyes, high quality makeup, cute, slim waist, 1{{gender}}, (mid 20's a little muscular kpop idol {{gender}}:1.1), (sharp:0.7)"
+pstv_pmpt_suffix = ", <lora:kitagawa_marin_v1-1:1>, <lora:Asian orgasm v4:1.3>"
+ngtv_pmpt        = "(worst quality, low quality, normal quality:1.8), (monochrome, grayscale:1.2), (sweat:1.1), lowres, paintings, sketches, nipples, skin spots, acnes, skin blemishes, bad anatomy, tilted head, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, blurry, bad feet, cropped, poorly drawn hands, poorly drawn face, mutation, deformed, jpeg artifacts, signature, watermark, extra fingers, fewer digits, extra limbs, extra arms, extra legs, malformed limbs, fused fingers, too many fingers, long neck, cross-eyed, mutated hands, polar lowres, bad body, bad proportions, gross, easynegative, negative_hand-neg, wearing vests, ng_deepnegative_v1_75t, 2girls, 2 girls, two girls, petals, logo, nametag, watermark, tattoo, tattoos, leather, cum, dripping, wet, tattoo, veins, FastNegativeV2, fat, v, peace symbol, nsfw,  dirty face, 1leg, 1arm, 1 leg, 1 arm, one leg, one arm, blurred eyes, too big breast, naked, bare chested, underwear, lingerie, too short pants, naked abdomen, naked belly, naked stomach, 2head, 2 head, two head, reflected light in eyes"
+
+
+def log_info(req_body, res_body):
+    logging.info(req_body)
+    logging.info(res_body)
 
 def script_name_to_index(name, scripts):
     try:
@@ -202,6 +215,13 @@ def api_middleware(app: FastAPI):
 class Api:
     def __init__(self, app: FastAPI, queue_lock: Lock):
 
+        mylogger = logging.getLogger()  # 4-1
+        mylogger.setLevel(logging.INFO)  # 4-2
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')  # 4-5
+        stream_hander = logging.StreamHandler()  # 4-3
+        stream_hander.setFormatter(formatter)  # 4-5
+        mylogger.addHandler(stream_hander)  # 4-3
+
         if shared.cmd_opts.api_auth:
             self.credentials = {}
             for auth in shared.cmd_opts.api_auth.split(","):
@@ -214,7 +234,7 @@ class Api:
         api_middleware(self.app)
 
         # added by sungjoon.kim at 24'04.
-        self.add_api_route("/api/v1/txt2img", text2imgapi2, methods=["POST"], response_model=models.TextToImageResponse)
+        self.add_api_route("/api/v1/txt2img", self.text2imgapi2, methods=["POST"], response_model=None)
         # self.add_api_route("/api/v1/img2img", api_custom.img2imgapi, methods=["POST"], response_model=models.ImageToImageResponse)
 
         self.add_api_route("/sdapi/v1/txt2img", self.text2imgapi, methods=["POST"], response_model=models.TextToImageResponse)
@@ -492,6 +512,95 @@ class Api:
         b64images = list(map(encode_pil_to_base64, processed.images)) if send_images else []
 
         return models.TextToImageResponse(images=b64images, parameters=vars(txt2imgreq), info=processed.js())
+
+    # added by sungjoon.kim at 24'04.15
+    def text2imgapi2(self, txt2imgreq: models.StableDiffusionTxt2ImgProcessingAPI, authorization: str | None = Header(default=None)):
+
+        logging.info('authorization ' + authorization)
+
+        hangul_text_arr = [txt2imgreq.gndr, txt2imgreq.cstm, txt2imgreq.look, txt2imgreq.bgnd]
+
+        # gender, costume, look, background
+        translator = deepl.Translator(authorization, server_url=API_URL_DEEPL)
+        trans_rslt = translator.translate_text(hangul_text_arr, source_lang="KO", target_lang="EN-US")
+
+        logging.info('trans_rslt ' + trans_rslt[0].text  + trans_rslt[1].text  + trans_rslt[2].text  + trans_rslt[3].text)
+
+        gender_noun = 'he'
+        if trans_rslt[0].text is 'girl':
+            gender_noun = 'she'
+        pstv_pmpt = pstv_pmpt_prefix.replace('{{gender}}', trans_rslt[0].text.replace(';', ', BREAK,'))
+        pstv_pmpt = pstv_pmpt + ', ' + gender_noun + ' is wearing ' + trans_rslt[1].text.replace(
+            ';', ', BREAK,')
+        pstv_pmpt = pstv_pmpt + ', ' + gender_noun + ' is ' + trans_rslt[2].text.replace(';',
+                                                                                                               ', BREAK,')
+        pstv_pmpt = pstv_pmpt + ', ' + gender_noun + ' is ' + trans_rslt[3].text.replace(';',
+                                                                                                               ', BREAK,')
+        pstv_pmpt += pstv_pmpt_suffix
+
+        task_id = txt2imgreq.force_task_id or create_task_id("txt2img")
+
+        script_runner = scripts.scripts_txt2img
+
+        infotext_script_args = {}
+        self.apply_infotext(txt2imgreq, "txt2img", script_runner=script_runner,
+                            mentioned_script_args=infotext_script_args)
+
+        selectable_scripts, selectable_script_idx = self.get_selectable_script(txt2imgreq.script_name, script_runner)
+
+        populate = txt2imgreq.copy(update={  # Override __init__ params
+            "steps": 20,
+            "width": 768,
+            "height": 768,
+            "cfg_scale": 10,
+            "prompt": pstv_pmpt,
+            "negative_prompt": ngtv_pmpt,
+            "sampler_name": validate_sampler_name(txt2imgreq.sampler_name or txt2imgreq.sampler_index),
+            "do_not_save_samples": False,
+            "do_not_save_grid": False,
+        })
+        if populate.sampler_name:
+            populate.sampler_index = None  # prevent a warning later on
+
+        args = vars(populate)
+        args.pop('script_name', None)
+        args.pop('script_args', None)  # will refeed them to the pipeline directly after initializing them
+        args.pop('alwayson_scripts', None)
+        args.pop('infotext', None)
+
+        script_args = self.init_script_args(txt2imgreq, self.default_script_arg_txt2img, selectable_scripts,
+                                            selectable_script_idx, script_runner,
+                                            input_script_args=infotext_script_args)
+
+        send_images = args.pop('send_images', True)
+        args.pop('save_images', True)
+
+        add_task_to_queue(task_id)
+
+        with self.queue_lock:
+            with closing(StableDiffusionProcessingTxt2Img(sd_model=shared.sd_model, **args)) as p:
+                p.is_api = True
+                p.scripts = script_runner
+                p.outpath_grids = opts.outdir_txt2img_grids
+                p.outpath_samples = opts.outdir_txt2img_samples
+
+                try:
+                    shared.state.begin(job="scripts_txt2img")
+                    start_task(task_id)
+
+                    if selectable_scripts is not None:
+                        p.script_args = script_args
+                        processed = scripts.scripts_txt2img.run(p, *p.script_args)  # Need to pass args as list here
+                    else:
+                        p.script_args = tuple(script_args)  # Need to pass args as tuple here
+                        processed = process_images(p)
+                    finish_task(task_id)
+                finally:
+                    shared.state.end()
+                    shared.total_tqdm.clear()
+
+        return models.TextToImageResponse2(images=processed.img_urls, seed=processed.seed)
+
 
     def img2imgapi(self, img2imgreq: models.StableDiffusionImg2ImgProcessingAPI):
         task_id = img2imgreq.force_task_id or create_task_id("img2img")

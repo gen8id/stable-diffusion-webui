@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import time
-
+from fastapi.staticfiles import StaticFiles
 from modules import timer
 from modules import initialize_util
 from modules import initialize
@@ -11,7 +11,6 @@ startup_timer = timer.startup_timer
 startup_timer.record("launcher")
 
 initialize.imports()
-
 initialize.check_versions()
 
 
@@ -19,6 +18,7 @@ def create_api(app):
     from modules.api.api import Api
     from modules.call_queue import queue_lock
 
+    app.mount("/api/v1/res", StaticFiles(directory="outputs"), name="res")
     api = Api(app, queue_lock)
     return api
 
