@@ -518,6 +518,9 @@ class Api:
 
         logging.info('authorization ' + authorization)
 
+        if authorization is None:
+            raise HTTPException(status_code=404, detail="Page not found")
+
         hangul_text_arr = [txt2imgreq.gndr, txt2imgreq.cstm, txt2imgreq.look, txt2imgreq.bgnd]
 
         # gender, costume, look, background
